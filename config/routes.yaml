@@ -7,8 +7,12 @@
 # To list all registered routes, run the following command:
 #   bin/console debug:router
 
+# Import controller routes with attributes
 controllers:
-    resource: routing.controllers
+    resource:
+        path: ../src/Controller/
+        namespace: App\Controller
+    type: attribute
 
 api_login_check:
     path: /api/login_check
