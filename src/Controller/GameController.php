@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Game;
 use App\Entity\User;
 use App\Repository\GameRepository;
+use App\Service\ChatGPTService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -107,6 +108,54 @@ class GameController extends AbstractController
             'characterColor' => $this->getCharacterColor($game->getCharacter()),
             'history' => $game->getHistory() ? json_decode($game->getHistory(), true) : [],
         ]);
+    }
+
+    /**
+     * IA joue son tour via ChatGPT (mode développement sans partie)
+     */
+    #[Route('/ai-turn', name: 'api_games_ai_turn_dev', methods: ['POST'])]
+    public function aiTurnDev(
+        Request $request,
+        ChatGPTService $chatGPTService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        $character = $data['character'] ?? [];
+        $diceResult = $data['diceResult'] ?? 0;
+        $possibleMoves = $data['possibleMoves'] ?? [];
+        $gameState = $data['gameState'] ?? [];
+
+        $decision = $chatGPTService->playAITurn($character, $diceResult, $possibleMoves, $gameState);
+
+        return $this->json($decision);
+    }
+
+    /**
+     * IA joue son tour via ChatGPT
+     */
+    #[Route('/{id}/ai-turn', name: 'api_games_ai_turn', methods: ['POST'])]
+    public function aiTurn(
+        Game $game,
+        Request $request,
+        ChatGPTService $chatGPTService
+    ): JsonResponse {
+        /** @var User|null $user */
+        $user = $this->getUser();
+
+        if (!$user || $game->getUser()->getId() !== $user->getId()) {
+            return $this->json(['message' => 'Accès refusé'], Response::HTTP_FORBIDDEN);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        $character = $data['character'] ?? [];
+        $diceResult = $data['diceResult'] ?? 0;
+        $possibleMoves = $data['possibleMoves'] ?? [];
+        $gameState = $data['gameState'] ?? [];
+
+        $decision = $chatGPTService->playAITurn($character, $diceResult, $possibleMoves, $gameState);
+
+        return $this->json($decision);
     }
 
     /**
