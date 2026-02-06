@@ -20,10 +20,6 @@ class ChatGPTService
      */
     public function playAITurn(array $character, int $diceResult, array $possibleMoves, array $gameState): array
     {
-        if (empty($this->apiKey)) {
-            return $this->playBasicAI($character, $diceResult, $possibleMoves, $gameState);
-        }
-
         try {
             $prompt = $this->buildTurnPrompt($character, $diceResult, $possibleMoves, $gameState);
 
@@ -56,8 +52,7 @@ class ChatGPTService
             return json_decode($aiResponse, true);
 
         } catch (\Exception $e) {
-            // En cas d'erreur, utiliser l'IA de base
-            return $this->playBasicAI($character, $diceResult, $possibleMoves, $gameState);
+            return [];
         }
     }
 
@@ -148,51 +143,5 @@ Que fais-tu ? Réponds au format JSON uniquement.",
             $hypothesesStr ?: 'Aucune',
             implode(', ', $character['cards'] ?? []) ?: 'Non révélées'
         );
-    }
-
-    /**
-     * IA de base si ChatGPT n'est pas disponible
-     */
-    private function playBasicAI(array $character, int $diceResult, array $possibleMoves, array $gameState): array
-    {
-        if (empty($possibleMoves)) {
-            return [
-                'action' => 'wait',
-                'reasoning' => 'Aucun mouvement possible'
-            ];
-        }
-
-        // Trier les mouvements pour trouver les pièces accessibles
-        $roomMoves = array_filter($possibleMoves, function($move) use ($gameState) {
-            $cell = $gameState['grid'][$move['destination']['y']][$move['destination']['x']] ?? null;
-            return $cell >= 3 && $cell <= 11; // C'est une pièce
-        });
-
-        if (!empty($roomMoves)) {
-            // Choisir une pièce aléatoire
-            $selectedMove = $roomMoves[array_rand($roomMoves)];
-        } else {
-            // Se rapprocher du centre
-            $centerX = 12;
-            $centerY = 12;
-
-            usort($possibleMoves, function($a, $b) use ($centerX, $centerY) {
-                $distA = abs($a['destination']['x'] - $centerX) + abs($a['destination']['y'] - $centerY);
-                $distB = abs($b['destination']['x'] - $centerX) + abs($b['destination']['y'] - $centerY);
-                return $distA - $distB;
-            });
-
-            $topMoves = array_slice($possibleMoves, 0, min(3, count($possibleMoves)));
-            $selectedMove = $topMoves[array_rand($topMoves)];
-        }
-
-        return [
-            'action' => 'move',
-            'target' => $selectedMove['destination'],
-            'path' => $selectedMove['chemin'] ?? null,
-            'reasoning' => !empty($roomMoves)
-                ? 'Je me dirige vers une pièce pour enquêter'
-                : 'Je me rapproche du centre du plateau'
-        ];
     }
 }
