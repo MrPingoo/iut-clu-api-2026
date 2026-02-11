@@ -159,6 +159,47 @@ class GameController extends AbstractController
     }
 
     /**
+     * Sauvegarder un mouvement/hypothèse du joueur
+     */
+    #[Route('/{id}/move', name: 'api_games_move', methods: ['PUT'])]
+    public function move(
+        Game $game,
+        Request $request,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        /** @var User|null $user */
+        $user = $this->getUser();
+
+        if (!$user || $game->getUser()->getId() !== $user->getId()) {
+            return $this->json(['message' => 'Accès refusé'], Response::HTTP_FORBIDDEN);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        // Mettre à jour l'historique de la partie
+        $history = $game->getHistory();
+        $historyArray = $history ? json_decode($history, true) : [];
+
+        $historyArray[] = [
+            'location' => $data['location'] ?? null,
+            'character' => $data['character'] ?? null,
+            'weapon' => $data['weapon'] ?? null,
+            'state' => $data['state'] ?? null,
+            'timestamp' => time()
+        ];
+
+        $game->setHistory(json_encode($historyArray));
+        $game->setUpdatedAt(new \DateTime());
+
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Mouvement sauvegardé'
+        ]);
+    }
+
+    /**
      * Supprimer une partie
      */
     #[Route('/{id}', name: 'api_games_delete', methods: ['DELETE'])]
