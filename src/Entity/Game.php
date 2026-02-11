@@ -19,7 +19,7 @@ class Game
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(name: '`character`', length: 150)]
     private ?string $character = null;
 
     #[ORM\Column(length: 20)]
